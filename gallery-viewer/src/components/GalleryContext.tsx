@@ -15,21 +15,33 @@ type MediaItem = {
   type: "image" | "video";
 };
 
+type ThisWeekMediaItem = MediaItem & {
+  year: string;
+  month: string;
+  dateTaken: string;
+};
+
+type ThroughYearsScope = "today" | "week";
+
 type GalleryState = {
   photoRoot: string | null;
   configured: boolean;
   years: string[];
   months: string[];
   photos: MediaItem[];
+  thisWeekPhotos: ThisWeekMediaItem[];
+  throughYearsScope: ThroughYearsScope;
   selectedYear: string | null;
   selectedMonth: string | null;
   loadingYears: boolean;
   loadingMonths: boolean;
   loadingPhotos: boolean;
+  loadingThisWeekPhotos: boolean;
   error: string | null;
   deletingFileName: string | null;
   selectYear: (year: string | null) => void;
   selectMonth: (month: string | null) => void;
+  setThroughYearsScope: (scope: ThroughYearsScope) => void;
   deletePhoto: (fileName: string) => Promise<void>;
   refreshConfig: () => Promise<void>;
 };
@@ -49,11 +61,14 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
   const [years, setYears] = useState<string[]>([]);
   const [months, setMonths] = useState<string[]>([]);
   const [photos, setPhotos] = useState<MediaItem[]>([]);
+  const [thisWeekPhotos, setThisWeekPhotos] = useState<ThisWeekMediaItem[]>([]);
+  const [throughYearsScope, setThroughYearsScope] = useState<ThroughYearsScope>("today");
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [loadingYears, setLoadingYears] = useState(false);
   const [loadingMonths, setLoadingMonths] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [loadingThisWeekPhotos, setLoadingThisWeekPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingFileName, setDeletingFileName] = useState<string | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -120,6 +135,22 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadThisWeekPhotos = useCallback(async (scope: ThroughYearsScope) => {
+    setLoadingThisWeekPhotos(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/this-week/photos?scope=${scope}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to load this week photos.");
+      setThisWeekPhotos(data.photos ?? []);
+    } catch (e) {
+      setThisWeekPhotos([]);
+      setError(e instanceof Error ? e.message : "Failed to load this week photos.");
+    } finally {
+      setLoadingThisWeekPhotos(false);
+    }
+  }, []);
+
   const refreshConfig = useCallback(async () => {
     await loadConfig();
   }, [loadConfig]);
@@ -166,6 +197,7 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
       setSelectedMonth(null);
       setMonths([]);
       setPhotos([]);
+      setThisWeekPhotos([]);
       if (year) loadMonths(year);
     },
     [loadMonths],
@@ -175,6 +207,7 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     (month: string | null) => {
       setSelectedMonth(month);
       setPhotos([]);
+      setThisWeekPhotos([]);
       if (month && selectedYear) loadPhotos(selectedYear, month);
     },
     [loadPhotos, selectedYear],
@@ -193,8 +226,15 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
       setSelectedMonth(null);
       setMonths([]);
       setPhotos([]);
+      setThisWeekPhotos([]);
     }
   }, [configLoaded, configured, loadYears]);
+
+  useEffect(() => {
+    if (configLoaded && configured && !selectedYear && !selectedMonth) {
+      loadThisWeekPhotos(throughYearsScope);
+    }
+  }, [configLoaded, configured, loadThisWeekPhotos, selectedMonth, selectedYear, throughYearsScope]);
 
   return (
     <GalleryContext.Provider
@@ -204,15 +244,19 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
         years,
         months,
         photos,
+        thisWeekPhotos,
+        throughYearsScope,
         selectedYear,
         selectedMonth,
         loadingYears,
         loadingMonths,
         loadingPhotos,
+        loadingThisWeekPhotos,
         error,
         deletingFileName,
         selectYear,
         selectMonth,
+        setThroughYearsScope,
         deletePhoto,
         refreshConfig,
       }}

@@ -368,11 +368,49 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.galleryHeaderTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .galleryHeaderTitle {
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.025em;
   color: var(--text);
+}
+
+.throughYearsScope {
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-top: 0;
+  margin-left: auto;
+}
+
+.scopeButton {
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  font-family: inherit;
+}
+
+.scopeButton:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.scopeButtonActive {
+  background: var(--active-bg);
+  color: var(--text);
+  border-color: var(--text-muted);
 }
 
 .galleryHeaderCount {
@@ -387,6 +425,36 @@ body {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.throughYearsGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.throughYearsYearSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.yearSeparator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.yearSeparatorLabel {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.yearSeparatorLine {
+  height: 1px;
+  flex: 1;
+  background: var(--border);
 }
 
 .photoCard {
@@ -423,9 +491,17 @@ body {
 
 .photoCardFooter {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.photoMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .photoName {
@@ -434,6 +510,12 @@ body {
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.photoDateTaken {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-bottom: 0.125rem;
 }
 
 .mediaCardButton {

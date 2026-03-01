@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import exifr from "exifr";
 
 const YEAR_RE = /^\d{4}$/;
 const MONTH_RE = /^\d{2}$/;
@@ -88,6 +89,14 @@ export type MediaItem = {
   type: "image" | "video";
 };
 
+export type ThisWeekMediaItem = MediaItem & {
+  year: string;
+  month: string;
+  dateTaken: string;
+};
+
+export type ThroughYearsScope = "today" | "week";
+
 export async function listPhotos(photoRoot: string, year: string, month: string): Promise<MediaItem[]> {
   const safeYear = assertYear(year);
   const safeMonth = assertMonth(month);
@@ -119,6 +128,163 @@ export async function listPhotos(photoRoot: string, year: string, month: string)
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+function isMissingDirectoryError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ENOENT"
+  );
+}
+
+async function getDateTaken(filePath: string): Promise<Date> {
+  const extension = path.extname(filePath).toLowerCase();
+  const stat = await fs.stat(filePath);
+  const fallbackDate = stat.mtime;
+
+  if (VIDEO_EXTENSIONS.has(extension)) {
+    return fallbackDate;
+  }
+
+  try {
+    const parsed = await exifr.parse(filePath, [
+      "DateTimeOriginal",
+      "CreateDate",
+      "ModifyDate",
+      "DateTimeDigitized",
+    ]);
+
+    if (parsed instanceof Date) {
+      return parsed;
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const values = Object.values(parsed);
+      for (const value of values) {
+        if (value instanceof Date) {
+          return value;
+        }
+      }
+    }
+  } catch {
+    // Fall back to mtime when metadata cannot be parsed.
+  }
+
+  return fallbackDate;
+}
+
+function atStartOfDay(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function atEndOfDay(date: Date): Date {
+  const result = new Date(date);
+  result.setHours(23, 59, 59, 999);
+  return result;
+}
+
+function buildYearWindow(
+  now: Date,
+  year: string,
+  scope: ThroughYearsScope,
+): { start: Date; end: Date; monthKeys: Set<string> } {
+  const windowEndCurrentYear = atEndOfDay(now);
+  const windowStartCurrentYear = atStartOfDay(new Date(now));
+  if (scope === "week") {
+    windowStartCurrentYear.setDate(windowStartCurrentYear.getDate() - 6);
+  }
+
+  const numericYear = Number.parseInt(year, 10);
+  const start = new Date(
+    numericYear,
+    windowStartCurrentYear.getMonth(),
+    windowStartCurrentYear.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const end = new Date(
+    numericYear,
+    windowEndCurrentYear.getMonth(),
+    windowEndCurrentYear.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+
+  const monthKeys = new Set<string>();
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    monthKeys.add((cursor.getMonth() + 1).toString().padStart(2, "0"));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return { start, end, monthKeys };
+}
+
+export async function listThroughYearsPhotos(
+  photoRoot: string,
+  scope: ThroughYearsScope,
+  now: Date = new Date(),
+): Promise<ThisWeekMediaItem[]> {
+  const years = await listYears(photoRoot);
+  const results: Array<ThisWeekMediaItem & { sortTimestamp: number }> = [];
+
+  for (const year of years) {
+    const { start, end, monthKeys } = buildYearWindow(now, year, scope);
+
+    for (const month of monthKeys) {
+      let photos: MediaItem[];
+      try {
+        photos = await listPhotos(photoRoot, year, month);
+      } catch (error) {
+        if (isMissingDirectoryError(error)) {
+          continue;
+        }
+        throw error;
+      }
+
+      for (const photo of photos) {
+        const absolutePath = resolveInsideRoot(photoRoot, year, month, photo.name);
+        const takenAt = await getDateTaken(absolutePath);
+        if (takenAt < start || takenAt > end) {
+          continue;
+        }
+
+        results.push({
+          ...photo,
+          year,
+          month,
+          dateTaken: takenAt.toISOString(),
+          sortTimestamp: takenAt.getTime(),
+        });
+      }
+    }
+  }
+
+  results.sort((a, b) => {
+    if (a.sortTimestamp !== b.sortTimestamp) return b.sortTimestamp - a.sortTimestamp;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+
+  return results.map((photo) => ({
+    name: photo.name,
+    url: photo.url,
+    type: photo.type,
+    year: photo.year,
+    month: photo.month,
+    dateTaken: photo.dateTaken,
+  }));
+}
+
+export async function listThisWeekPhotos(photoRoot: string, now: Date = new Date()): Promise<ThisWeekMediaItem[]> {
+  return listThroughYearsPhotos(photoRoot, "week", now);
 }
 
 export async function deletePhoto(

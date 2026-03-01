@@ -20,31 +20,70 @@ function monthLabel(year: string, month: string): string {
   return `${monthFormatter.format(new Date(Number(year), index - 1, 1))} ${year}`;
 }
 
+function formatTakenDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
 export default function GalleryPage() {
   const {
     configured,
     photos,
+    thisWeekPhotos,
+    throughYearsScope,
     selectedYear,
     selectedMonth,
     loadingPhotos,
+    loadingThisWeekPhotos,
     error,
     deletingFileName,
     deletePhoto,
+    setThroughYearsScope,
   } = useGallery();
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxSelectionKey, setLightboxSelectionKey] = useState("");
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   const lightboxRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const hasMedia = photos.length > 0;
+  const showingThisWeek = !selectedYear || !selectedMonth;
+  const displayedMedia = showingThisWeek ? thisWeekPhotos : photos;
+  const isLoadingMedia = showingThisWeek ? loadingThisWeekPhotos : loadingPhotos;
+  const selectionKey = `${selectedYear ?? "none"}:${selectedMonth ?? "none"}`;
+  const hasMedia = displayedMedia.length > 0;
+  const canShowLightbox = lightboxOpen && lightboxSelectionKey === selectionKey;
 
   const activeMedia = useMemo(() => {
     if (!hasMedia) return null;
-    const safeIndex = ((lightboxIndex % photos.length) + photos.length) % photos.length;
-    return photos[safeIndex];
-  }, [hasMedia, lightboxIndex, photos]);
+    const safeIndex = ((lightboxIndex % displayedMedia.length) + displayedMedia.length) % displayedMedia.length;
+    return displayedMedia[safeIndex];
+  }, [displayedMedia, hasMedia, lightboxIndex]);
+
+  const throughYearsByYear = useMemo(() => {
+    if (!showingThisWeek) return [];
+
+    const groups = new Map<string, typeof thisWeekPhotos>();
+    for (const photo of thisWeekPhotos) {
+      const existing = groups.get(photo.year);
+      if (existing) {
+        existing.push(photo);
+      } else {
+        groups.set(photo.year, [photo]);
+      }
+    }
+
+    return Array.from(groups.entries()).sort(([yearA], [yearB]) => Number(yearB) - Number(yearA));
+  }, [showingThisWeek, thisWeekPhotos]);
 
   const closeLightbox = useCallback(() => setLightboxOpen(false), []);
 
@@ -66,18 +105,19 @@ export default function GalleryPage() {
 
   function openLightbox(index: number) {
     setLightboxIndex(index);
+    setLightboxSelectionKey(selectionKey);
     setLightboxOpen(true);
   }
 
   const showNext = useCallback(() => {
     if (!hasMedia) return;
-    setLightboxIndex((prev) => (prev + 1) % photos.length);
-  }, [hasMedia, photos.length]);
+    setLightboxIndex((prev) => (prev + 1) % displayedMedia.length);
+  }, [displayedMedia.length, hasMedia]);
 
   const showPrevious = useCallback(() => {
     if (!hasMedia) return;
-    setLightboxIndex((prev) => (prev - 1 + photos.length) % photos.length);
-  }, [hasMedia, photos.length]);
+    setLightboxIndex((prev) => (prev - 1 + displayedMedia.length) % displayedMedia.length);
+  }, [displayedMedia.length, hasMedia]);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -113,11 +153,6 @@ export default function GalleryPage() {
     };
   }, [closeLightbox, lightboxOpen, showNext, showPrevious]);
 
-  // Close lightbox when selection changes
-  useEffect(() => {
-    setLightboxOpen(false);
-  }, [selectedYear, selectedMonth]);
-
   if (!configured) {
     return (
       <div className="emptyState">
@@ -134,51 +169,78 @@ export default function GalleryPage() {
     );
   }
 
-  if (!selectedYear || !selectedMonth) {
-    return (
-      <div className="emptyState">
-        <ImageIcon className="emptyStateIcon" />
-        <h2 className="emptyStateTitle">Select a collection</h2>
-        <p className="emptyStateDescription">
-          Pick a year and month from the sidebar to view your photos.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <>
       <header className="galleryHeader">
-        <h1 className="galleryHeaderTitle">{monthLabel(selectedYear, selectedMonth)}</h1>
-        {!loadingPhotos && (
+        <div className="galleryHeaderTopRow">
+          <h1 className="galleryHeaderTitle">
+            {showingThisWeek
+              ? throughYearsScope === "today"
+                ? "Today through the years"
+                : "This week through the years"
+              : monthLabel(selectedYear, selectedMonth)}
+          </h1>
+          {showingThisWeek && (
+            <div className="throughYearsScope">
+              <button
+                className={`scopeButton ${throughYearsScope === "today" ? "scopeButtonActive" : ""}`}
+                type="button"
+                onClick={() => setThroughYearsScope("today")}
+                aria-pressed={throughYearsScope === "today"}
+              >
+                Today
+              </button>
+              <button
+                className={`scopeButton ${throughYearsScope === "week" ? "scopeButtonActive" : ""}`}
+                type="button"
+                onClick={() => setThroughYearsScope("week")}
+                aria-pressed={throughYearsScope === "week"}
+              >
+                This week
+              </button>
+            </div>
+          )}
+        </div>
+
+        {!isLoadingMedia && (
           <p className="galleryHeaderCount">
-            {photos.length} {photos.length === 1 ? "item" : "items"}
+            {displayedMedia.length} {displayedMedia.length === 1 ? "item" : "items"}
           </p>
         )}
       </header>
 
       {error && <p className="errorMessage">{error}</p>}
 
-      {loadingPhotos && (
+      {isLoadingMedia && (
         <div className="loadingState">
           <span className="spinner" />
           Loading photos…
         </div>
       )}
 
-      {!loadingPhotos && photos.length === 0 && (
+      {!isLoadingMedia && displayedMedia.length === 0 && (
         <div className="emptyState" style={{ minHeight: "40vh" }}>
           <ImageIcon className="emptyStateIcon" />
-          <h2 className="emptyStateTitle">No photos</h2>
+          <h2 className="emptyStateTitle">
+            {showingThisWeek
+              ? throughYearsScope === "today"
+                ? "No photos from today"
+                : "No photos from this week"
+              : "No photos"}
+          </h2>
           <p className="emptyStateDescription">
-            This month doesn&apos;t have any photos yet.
+            {showingThisWeek
+              ? throughYearsScope === "today"
+                ? "No photos were found from this date in previous years."
+                : "No photos were found from this week in previous years."
+              : "This month doesn&apos;t have any photos yet."}
           </p>
         </div>
       )}
 
-      {!loadingPhotos && photos.length > 0 && (
+      {!isLoadingMedia && displayedMedia.length > 0 && !showingThisWeek && (
         <div className="photoGrid">
-          {photos.map((photo, index) => (
+          {displayedMedia.map((photo, index) => (
             <figure key={photo.url} className="photoCard">
               <button
                 className="mediaCardButton"
@@ -196,14 +258,25 @@ export default function GalleryPage() {
                 )}
               </button>
               <figcaption className="photoCardFooter">
-                <span className="photoName">{photo.name}</span>
+                <span className="photoMeta">
+                  {showingThisWeek && "dateTaken" in photo ? (
+                    <>
+                      <span className="photoDateTaken">
+                        {formatTakenDate(typeof photo.dateTaken === "string" ? photo.dateTaken : "")}
+                      </span>
+                      <span className="photoName">{photo.name}</span>
+                    </>
+                  ) : (
+                    <span className="photoName">{photo.name}</span>
+                  )}
+                </span>
                 <button
                   className="dangerIconButton"
                   type="button"
                   onClick={() => {
                     void handleDelete(photo.name);
                   }}
-                  disabled={deletingFileName === photo.name}
+                  disabled={showingThisWeek || deletingFileName === photo.name}
                   aria-label={`Delete ${photo.name}`}
                 >
                   <Trash2 size={16} />
@@ -214,7 +287,65 @@ export default function GalleryPage() {
         </div>
       )}
 
-      {lightboxOpen && activeMedia && (
+      {!isLoadingMedia && displayedMedia.length > 0 && showingThisWeek && (
+        <div className="throughYearsGroups">
+          {throughYearsByYear.map(([year, yearPhotos]) => (
+            <section key={year} className="throughYearsYearSection" aria-label={`Photos from ${year}`}>
+              <div className="yearSeparator">
+                <h2 className="yearSeparatorLabel">{year}</h2>
+                <div className="yearSeparatorLine" aria-hidden="true" />
+              </div>
+              <div className="photoGrid">
+                {yearPhotos.map((photo) => {
+                  const index = displayedMedia.findIndex(
+                    (item) => item.url === photo.url && item.name === photo.name,
+                  );
+                  return (
+                    <figure key={photo.url} className="photoCard">
+                      <button
+                        className="mediaCardButton"
+                        type="button"
+                        onClick={() => openLightbox(index)}
+                        aria-label={`Open ${photo.name}`}
+                      >
+                        {photo.type === "image" ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={photo.url} alt={photo.name} loading="lazy" />
+                        ) : (
+                          <div className="videoThumb" aria-hidden="true">
+                            <span className="videoBadge">Video</span>
+                          </div>
+                        )}
+                      </button>
+                      <figcaption className="photoCardFooter">
+                        <span className="photoMeta">
+                          <span className="photoDateTaken">
+                            {formatTakenDate(typeof photo.dateTaken === "string" ? photo.dateTaken : "")}
+                          </span>
+                          <span className="photoName">{photo.name}</span>
+                        </span>
+                        <button
+                          className="dangerIconButton"
+                          type="button"
+                          onClick={() => {
+                            void handleDelete(photo.name);
+                          }}
+                          disabled={showingThisWeek || deletingFileName === photo.name}
+                          aria-label={`Delete ${photo.name}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </figcaption>
+                    </figure>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {canShowLightbox && activeMedia && (
         <div
           ref={lightboxRef}
           className="lightboxOverlay"
@@ -237,7 +368,7 @@ export default function GalleryPage() {
           >
             &times;
           </button>
-          {photos.length > 1 && (
+          {displayedMedia.length > 1 && (
             <>
               <button
                 className="lightboxNav lightboxNavPrev"
