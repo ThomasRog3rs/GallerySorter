@@ -8,6 +8,32 @@ import { readConfig } from "@/lib/config";
 import { assertFileName, assertMonth, assertYear, resolveInsideRoot } from "@/lib/gallery";
 
 const HEIC_EXTENSIONS = new Set([".heic", ".heif"]);
+const HEIC_BRANDS = new Set(["heic", "heix", "hevc", "hevx", "mif1", "msf1"]);
+const BROWSER_SUPPORTED_EXTENSIONS = new Set([
+  ".apng",
+  ".avif",
+  ".bmp",
+  ".gif",
+  ".jpeg",
+  ".jpg",
+  ".png",
+  ".svg",
+  ".webp",
+]);
+
+const isHeicBuffer = (buffer: Buffer) => {
+  if (buffer.length < 12) {
+    return false;
+  }
+
+  const boxType = buffer.toString("ascii", 4, 8);
+  if (boxType !== "ftyp") {
+    return false;
+  }
+
+  const brand = buffer.toString("ascii", 8, 12).toLowerCase();
+  return HEIC_BRANDS.has(brand);
+};
 
 export async function GET(request: Request) {
   try {
@@ -30,7 +56,17 @@ export async function GET(request: Request) {
     const buffer = await fs.readFile(absolutePath);
     const extension = path.extname(file).toLowerCase();
 
-    if (HEIC_EXTENSIONS.has(extension)) {
+    const isBrowserSupported = BROWSER_SUPPORTED_EXTENSIONS.has(extension);
+    const isHeic = HEIC_EXTENSIONS.has(extension) || isHeicBuffer(buffer);
+
+    if (!isBrowserSupported || isHeic) {
+      if (!isHeic) {
+        return NextResponse.json(
+          { error: "Unsupported image type. Convert to a browser-compatible format." },
+          { status: 415 },
+        );
+      }
+
       try {
         const heicInputBuffer: ArrayBufferLike = buffer.buffer.slice(
           buffer.byteOffset,
