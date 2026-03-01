@@ -90,6 +90,10 @@ export async function listPhotos(photoRoot: string, year: string, month: string)
         return false;
       }
 
+      if (entry.name.startsWith(".")) {
+        return false;
+      }
+
       const extension = path.extname(entry.name).toLowerCase();
       return IMAGE_EXTENSIONS.has(extension);
     })

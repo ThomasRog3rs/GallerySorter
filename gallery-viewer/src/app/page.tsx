@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type ConfigResponse = {
   photoRoot: string | null;
@@ -56,14 +56,6 @@ export default function Home() {
 
   const isConfigured = Boolean(savedRoot);
 
-  const activeMonthLabel = useMemo(() => {
-    if (!selectedYear || !selectedMonth) {
-      return "";
-    }
-
-    return monthLabel(selectedYear, selectedMonth);
-  }, [selectedMonth, selectedYear]);
-
   async function loadConfig() {
     const response = await fetch("/api/config", { cache: "no-store" });
     const data = (await response.json()) as ConfigResponse;
@@ -82,11 +74,9 @@ export default function Home() {
         throw new Error(data.error ?? "Failed to load years.");
       }
 
-      const nextYears = data.years ?? [];
-      setYears(nextYears);
-
-      const firstYear = nextYears.at(-1) ?? null;
-      setSelectedYear(firstYear);
+      setYears(data.years ?? []);
+      // Instead of auto-selecting, we stay at the years level
+      setSelectedYear(null);
       setSelectedMonth(null);
       setMonths([]);
       setPhotos([]);
@@ -113,10 +103,9 @@ export default function Home() {
         throw new Error(data.error ?? "Failed to load months.");
       }
 
-      const nextMonths = data.months ?? [];
-      setMonths(nextMonths);
-      const firstMonth = nextMonths.at(-1) ?? null;
-      setSelectedMonth(firstMonth);
+      setMonths(data.months ?? []);
+      // Instead of auto-selecting, we stay at the months level
+      setSelectedMonth(null);
       setPhotos([]);
     } catch (error) {
       setMonths([]);
@@ -221,75 +210,98 @@ export default function Home() {
           <button type="submit">Save</button>
         </form>
 
-        {savedRoot && <p className="muted">Current: {savedRoot}</p>}
+        {savedRoot && <p className="muted" style={{ marginTop: "0.5rem" }}>Current: {savedRoot}</p>}
         {statusMessage && <p className="success">{statusMessage}</p>}
         {errorMessage && <p className="error">{errorMessage}</p>}
       </section>
 
-      <section className="galleryLayout">
-        <aside className="card listPanel">
-          <h2>Years</h2>
-          {!isConfigured && <p className="muted">Set your photo directory to begin.</p>}
-          {isConfigured && years.length === 0 && !loadingGallery && <p className="muted">No year folders found.</p>}
-          <ul>
-            {years.map((year) => (
-              <li key={year}>
-                <button
-                  className={selectedYear === year ? "listButton active" : "listButton"}
-                  onClick={() => {
-                    setSelectedYear(year);
-                    setSelectedMonth(null);
-                    setPhotos([]);
-                  }}
-                  type="button"
-                >
-                  {year}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
+      {isConfigured && (
+        <section className="card galleryLayout">
+          <header className="navigationHeader">
+            {!selectedYear && <h2>Years</h2>}
+            
+            {selectedYear && !selectedMonth && (
+              <>
+                <button className="secondaryButton" onClick={() => setSelectedYear(null)}>← Back to Years</button>
+                <h2>{selectedYear}</h2>
+              </>
+            )}
 
-        <aside className="card listPanel">
-          <h2>Months</h2>
-          {!selectedYear && <p className="muted">Select a year.</p>}
-          {selectedYear && months.length === 0 && !loadingGallery && <p className="muted">No month folders found.</p>}
-          <ul>
-            {months.map((month) => (
-              <li key={month}>
-                <button
-                  className={selectedMonth === month ? "listButton active" : "listButton"}
-                  onClick={() => {
-                    setSelectedMonth(month);
-                    setPhotos([]);
-                  }}
-                  type="button"
-                >
-                  {monthLabel(selectedYear ?? "", month)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
+            {selectedYear && selectedMonth && (
+              <>
+                <button className="secondaryButton" onClick={() => setSelectedMonth(null)}>← Back to Months</button>
+                <h2>{selectedYear} / {monthLabel(selectedYear, selectedMonth)}</h2>
+              </>
+            )}
+          </header>
 
-        <section className="card photosPanel">
-          <h2>{activeMonthLabel || "Photos"}</h2>
-          {loadingGallery && <p className="muted">Loading…</p>}
-          {!loadingGallery && selectedYear && selectedMonth && photos.length === 0 && (
-            <p className="muted">No photos found for this month.</p>
+          {!selectedYear && (
+            <div className="listPanel">
+              {years.length === 0 && !loadingGallery && <p className="muted">No year folders found.</p>}
+              {loadingGallery && <p className="muted">Loading…</p>}
+              <ul>
+                {years.map((year) => (
+                  <li key={year}>
+                    <button
+                      className="listButton"
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setSelectedMonth(null);
+                        setPhotos([]);
+                      }}
+                      type="button"
+                    >
+                      {year}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
-          <div className="photoGrid">
-            {photos.map((photo) => (
-              <figure key={photo.url} className="photoCard">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={photo.name} loading="lazy" />
-                <figcaption>{photo.name}</figcaption>
-              </figure>
-            ))}
-          </div>
+          {selectedYear && !selectedMonth && (
+            <div className="listPanel">
+              {months.length === 0 && !loadingGallery && <p className="muted">No month folders found.</p>}
+              {loadingGallery && <p className="muted">Loading…</p>}
+              <ul>
+                {months.map((month) => (
+                  <li key={month}>
+                    <button
+                      className="listButton"
+                      onClick={() => {
+                        setSelectedMonth(month);
+                        setPhotos([]);
+                      }}
+                      type="button"
+                    >
+                      {monthLabel(selectedYear, month)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {selectedYear && selectedMonth && (
+            <div className="photosPanel">
+              {loadingGallery && <p className="muted">Loading…</p>}
+              {!loadingGallery && photos.length === 0 && (
+                <p className="muted">No photos found for this month.</p>
+              )}
+
+              <div className="photoGrid">
+                {photos.map((photo) => (
+                  <figure key={photo.url} className="photoCard">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.url} alt={photo.name} loading="lazy" />
+                    <figcaption>{photo.name}</figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
-      </section>
+      )}
     </main>
   );
 }
