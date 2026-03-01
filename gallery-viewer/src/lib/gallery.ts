@@ -120,3 +120,28 @@ export async function listPhotos(photoRoot: string, year: string, month: string)
     })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
+
+export async function deletePhoto(
+  photoRoot: string,
+  year: string,
+  month: string,
+  fileName: string,
+): Promise<void> {
+  const safeYear = assertYear(year);
+  const safeMonth = assertMonth(month);
+  const safeFileName = assertFileName(fileName);
+  const extension = path.extname(safeFileName).toLowerCase();
+
+  if (!IMAGE_EXTENSIONS.has(extension) && !VIDEO_EXTENSIONS.has(extension)) {
+    throw new Error("Only image and video files can be deleted.");
+  }
+
+  const absolutePath = resolveInsideRoot(photoRoot, safeYear, safeMonth, safeFileName);
+  const stat = await fs.stat(absolutePath);
+
+  if (!stat.isFile()) {
+    throw new Error("Not found.");
+  }
+
+  await fs.unlink(absolutePath);
+}

@@ -27,8 +27,10 @@ type GalleryState = {
   loadingMonths: boolean;
   loadingPhotos: boolean;
   error: string | null;
+  deletingFileName: string | null;
   selectYear: (year: string | null) => void;
   selectMonth: (month: string | null) => void;
+  deletePhoto: (fileName: string) => Promise<void>;
   refreshConfig: () => Promise<void>;
 };
 
@@ -53,6 +55,7 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
   const [loadingMonths, setLoadingMonths] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingFileName, setDeletingFileName] = useState<string | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
 
   const configured = Boolean(photoRoot);
@@ -121,6 +124,42 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     await loadConfig();
   }, [loadConfig]);
 
+  const deletePhoto = useCallback(
+    async (fileName: string) => {
+      if (!selectedYear || !selectedMonth) {
+        throw new Error("Select a year and month first.");
+      }
+
+      setDeletingFileName(fileName);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/photos", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            year: selectedYear,
+            month: selectedMonth,
+            file: fileName,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "Failed to delete photo.");
+        }
+
+        setPhotos((prev) => prev.filter((photo) => photo.name !== fileName));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to delete photo.");
+        throw e;
+      } finally {
+        setDeletingFileName(null);
+      }
+    },
+    [selectedMonth, selectedYear],
+  );
+
   const selectYear = useCallback(
     (year: string | null) => {
       setSelectedYear(year);
@@ -171,8 +210,10 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
         loadingMonths,
         loadingPhotos,
         error,
+        deletingFileName,
         selectYear,
         selectMonth,
+        deletePhoto,
         refreshConfig,
       }}
     >

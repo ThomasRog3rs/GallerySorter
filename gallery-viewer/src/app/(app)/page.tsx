@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ImageIcon, Settings } from "lucide-react";
+import { ImageIcon, Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useGallery } from "@/components/GalleryContext";
 
@@ -28,6 +28,8 @@ export default function GalleryPage() {
     selectedMonth,
     loadingPhotos,
     error,
+    deletingFileName,
+    deletePhoto,
   } = useGallery();
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -45,6 +47,22 @@ export default function GalleryPage() {
   }, [hasMedia, lightboxIndex, photos]);
 
   const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
+  const handleDelete = useCallback(
+    async (fileName: string): Promise<boolean> => {
+      const confirmed = window.confirm(
+        `Delete "${fileName}"?\n\nThis action cannot be undone.`,
+      );
+
+      if (!confirmed) {
+        return false;
+      }
+
+      await deletePhoto(fileName);
+      return true;
+    },
+    [deletePhoto],
+  );
 
   function openLightbox(index: number) {
     setLightboxIndex(index);
@@ -177,7 +195,20 @@ export default function GalleryPage() {
                   </div>
                 )}
               </button>
-              <figcaption>{photo.name}</figcaption>
+              <figcaption className="photoCardFooter">
+                <span className="photoName">{photo.name}</span>
+                <button
+                  className="dangerIconButton"
+                  type="button"
+                  onClick={() => {
+                    void handleDelete(photo.name);
+                  }}
+                  disabled={deletingFileName === photo.name}
+                  aria-label={`Delete ${photo.name}`}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </figcaption>
             </figure>
           ))}
         </div>
@@ -240,6 +271,18 @@ export default function GalleryPage() {
               />
             )}
             <p className="lightboxCaption">{activeMedia.name}</p>
+            <button
+              className="dangerButton"
+              type="button"
+              onClick={async () => {
+                const deleted = await handleDelete(activeMedia.name);
+                if (deleted) closeLightbox();
+              }}
+              disabled={deletingFileName === activeMedia.name}
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
           </div>
         </div>
       )}

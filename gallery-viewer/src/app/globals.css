@@ -336,6 +336,32 @@ body {
   border-color: var(--text-muted);
 }
 
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid rgba(252, 165, 165, 0.35);
+  border-radius: var(--radius);
+  color: var(--error);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  min-height: 40px;
+  padding: 0.5rem 1rem;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.dangerButton:hover {
+  background: rgba(127, 29, 29, 0.55);
+}
+
+.dangerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ── Gallery header ────────────────────────────── */
 
 .galleryHeader {
@@ -395,6 +421,21 @@ body {
   white-space: nowrap;
 }
 
+.photoCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.photoName {
+  flex: 1;
+  text-align: left;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .mediaCardButton {
   width: 100%;
   border: none;
@@ -429,6 +470,31 @@ body {
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   letter-spacing: 0.03em;
+}
+
+.dangerIconButton {
+  width: 1.75rem;
+  height: 1.75rem;
+  min-height: 0;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--radius);
+  border: 1px solid rgba(252, 165, 165, 0.35);
+  background: rgba(127, 29, 29, 0.3);
+  color: var(--error);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.dangerIconButton:hover {
+  background: rgba(127, 29, 29, 0.5);
+}
+
+.dangerIconButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ── Settings form ─────────────────────────────── */
