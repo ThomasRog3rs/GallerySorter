@@ -56,9 +56,9 @@ export default function GalleryPage() {
   const lightboxRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
-  const showingThisWeek = !selectedYear || !selectedMonth;
-  const displayedMedia = showingThisWeek ? thisWeekPhotos : photos;
-  const isLoadingMedia = showingThisWeek ? loadingThisWeekPhotos : loadingPhotos;
+  const showingThroughYears = !selectedMonth;
+  const displayedMedia = showingThroughYears ? thisWeekPhotos : photos;
+  const isLoadingMedia = showingThroughYears ? loadingThisWeekPhotos : loadingPhotos;
   const selectionKey = `${selectedYear ?? "none"}:${selectedMonth ?? "none"}`;
   const hasMedia = displayedMedia.length > 0;
   const canShowLightbox = lightboxOpen && lightboxSelectionKey === selectionKey;
@@ -70,7 +70,7 @@ export default function GalleryPage() {
   }, [displayedMedia, hasMedia, lightboxIndex]);
 
   const throughYearsByYear = useMemo(() => {
-    if (!showingThisWeek) return [];
+    if (!showingThroughYears) return [];
 
     const groups = new Map<string, typeof thisWeekPhotos>();
     for (const photo of thisWeekPhotos) {
@@ -83,7 +83,7 @@ export default function GalleryPage() {
     }
 
     return Array.from(groups.entries()).sort(([yearA], [yearB]) => Number(yearB) - Number(yearA));
-  }, [showingThisWeek, thisWeekPhotos]);
+  }, [showingThroughYears, thisWeekPhotos]);
 
   const closeLightbox = useCallback(() => setLightboxOpen(false), []);
 
@@ -174,13 +174,13 @@ export default function GalleryPage() {
       <header className="galleryHeader">
         <div className="galleryHeaderTopRow">
           <h1 className="galleryHeaderTitle">
-            {showingThisWeek
+            {showingThroughYears
               ? throughYearsScope === "today"
                 ? "Today through the years"
                 : "This week through the years"
-              : monthLabel(selectedYear, selectedMonth)}
+              : monthLabel(selectedYear ?? "", selectedMonth)}
           </h1>
-          {showingThisWeek && (
+          {showingThroughYears && (
             <div className="throughYearsScope">
               <button
                 className={`scopeButton ${throughYearsScope === "today" ? "scopeButtonActive" : ""}`}
@@ -222,14 +222,14 @@ export default function GalleryPage() {
         <div className="emptyState" style={{ minHeight: "40vh" }}>
           <ImageIcon className="emptyStateIcon" />
           <h2 className="emptyStateTitle">
-            {showingThisWeek
+            {showingThroughYears
               ? throughYearsScope === "today"
                 ? "No photos from today"
                 : "No photos from this week"
               : "No photos"}
           </h2>
           <p className="emptyStateDescription">
-            {showingThisWeek
+            {showingThroughYears
               ? throughYearsScope === "today"
                 ? "No photos were found from this date in previous years."
                 : "No photos were found from this week in previous years."
@@ -238,7 +238,7 @@ export default function GalleryPage() {
         </div>
       )}
 
-      {!isLoadingMedia && displayedMedia.length > 0 && !showingThisWeek && (
+      {!isLoadingMedia && displayedMedia.length > 0 && !showingThroughYears && (
         <div className="photoGrid">
           {displayedMedia.map((photo, index) => (
             <figure key={photo.url} className="photoCard">
@@ -259,7 +259,7 @@ export default function GalleryPage() {
               </button>
               <figcaption className="photoCardFooter">
                 <span className="photoMeta">
-                  {showingThisWeek && "dateTaken" in photo ? (
+                  {showingThroughYears && "dateTaken" in photo ? (
                     <>
                       <span className="photoDateTaken">
                         {formatTakenDate(typeof photo.dateTaken === "string" ? photo.dateTaken : "")}
@@ -276,7 +276,7 @@ export default function GalleryPage() {
                   onClick={() => {
                     void handleDelete(photo.name);
                   }}
-                  disabled={showingThisWeek || deletingFileName === photo.name}
+                  disabled={showingThroughYears || deletingFileName === photo.name}
                   aria-label={`Delete ${photo.name}`}
                 >
                   <Trash2 size={16} />
@@ -287,7 +287,7 @@ export default function GalleryPage() {
         </div>
       )}
 
-      {!isLoadingMedia && displayedMedia.length > 0 && showingThisWeek && (
+      {!isLoadingMedia && displayedMedia.length > 0 && showingThroughYears && (
         <div className="throughYearsGroups">
           {throughYearsByYear.map(([year, yearPhotos]) => (
             <section key={year} className="throughYearsYearSection" aria-label={`Photos from ${year}`}>
@@ -330,7 +330,7 @@ export default function GalleryPage() {
                           onClick={() => {
                             void handleDelete(photo.name);
                           }}
-                          disabled={showingThisWeek || deletingFileName === photo.name}
+                          disabled={showingThroughYears || deletingFileName === photo.name}
                           aria-label={`Delete ${photo.name}`}
                         >
                           <Trash2 size={16} />

@@ -197,7 +197,6 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
       setSelectedMonth(null);
       setMonths([]);
       setPhotos([]);
-      setThisWeekPhotos([]);
       if (year) loadMonths(year);
     },
     [loadMonths],
@@ -231,10 +230,10 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
   }, [configLoaded, configured, loadYears]);
 
   useEffect(() => {
-    if (configLoaded && configured && !selectedYear && !selectedMonth) {
+    if (configLoaded && configured && !selectedMonth) {
       loadThisWeekPhotos(throughYearsScope);
     }
-  }, [configLoaded, configured, loadThisWeekPhotos, selectedMonth, selectedYear, throughYearsScope]);
+  }, [configLoaded, configured, loadThisWeekPhotos, selectedMonth, throughYearsScope]);
 
   return (
     <GalleryContext.Provider
