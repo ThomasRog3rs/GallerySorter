@@ -5,7 +5,7 @@ import exifr from "exifr";
 const YEAR_RE = /^\d{4}$/;
 const MONTH_RE = /^\d{2}$/;
 
-const IMAGE_EXTENSIONS = new Set([
+export const IMAGE_EXTENSIONS = new Set([
   ".jpg",
   ".jpeg",
   ".png",
@@ -18,7 +18,7 @@ const IMAGE_EXTENSIONS = new Set([
   ".tiff",
 ]);
 
-const VIDEO_EXTENSIONS = new Set([
+export const VIDEO_EXTENSIONS = new Set([
   ".mp4",
   ".webm",
   ".mov",
@@ -26,6 +26,24 @@ const VIDEO_EXTENSIONS = new Set([
   ".avi",
   ".mkv",
 ]);
+
+function isReasonableDate(value: Date): boolean {
+  if (!(value instanceof Date)) {
+    return false;
+  }
+
+  const timestamp = value.getTime();
+  if (Number.isNaN(timestamp)) {
+    return false;
+  }
+
+  return timestamp > Date.UTC(1970, 0, 1) && timestamp <= Date.now() + 24 * 60 * 60 * 1000;
+}
+
+export function isSupportedMediaExtension(extension: string): boolean {
+  const normalized = extension.toLowerCase();
+  return IMAGE_EXTENSIONS.has(normalized) || VIDEO_EXTENSIONS.has(normalized);
+}
 
 export function assertYear(input: string): string {
   if (!YEAR_RE.test(input)) {
@@ -96,6 +114,84 @@ export type ThisWeekMediaItem = MediaItem & {
 };
 
 export type ThroughYearsScope = "today" | "week";
+
+export async function getBestDateForOrganize(filePath: string): Promise<Date | null> {
+  const extension = path.extname(filePath).toLowerCase();
+  if (!isSupportedMediaExtension(extension)) {
+    return null;
+  }
+
+  const stat = await fs.stat(filePath);
+  const candidateDates: Date[] = [];
+
+  if (isReasonableDate(stat.birthtime)) {
+    candidateDates.push(stat.birthtime);
+  }
+
+  if (isReasonableDate(stat.mtime)) {
+    candidateDates.push(stat.mtime);
+  }
+
+  if (IMAGE_EXTENSIONS.has(extension)) {
+    try {
+      const parsed = await exifr.parse(filePath, [
+        "DateTimeOriginal",
+        "CreateDate",
+        "ModifyDate",
+        "DateTimeDigitized",
+      ]);
+
+      if (parsed instanceof Date) {
+        if (isReasonableDate(parsed)) {
+          candidateDates.push(parsed);
+        }
+      } else if (parsed && typeof parsed === "object") {
+        const values = Object.values(parsed);
+        for (const value of values) {
+          if (value instanceof Date && isReasonableDate(value)) {
+            candidateDates.push(value);
+          }
+        }
+      }
+    } catch {
+      // Fall back to filesystem dates when metadata cannot be parsed.
+    }
+  }
+
+  if (candidateDates.length === 0) {
+    return null;
+  }
+
+  return candidateDates.reduce((earliest, current) =>
+    current.getTime() < earliest.getTime() ? current : earliest,
+  );
+}
+
+export async function resolveDestinationPath(
+  photoRoot: string,
+  year: string,
+  month: string,
+  originalFileName: string,
+): Promise<string> {
+  const safeYear = assertYear(year);
+  const safeMonth = assertMonth(month);
+  const cleanFileName = assertFileName(originalFileName);
+  const baseName = path.parse(cleanFileName).name;
+  const extension = path.extname(cleanFileName).toLowerCase();
+
+  let suffix = 0;
+  while (true) {
+    const nextName = suffix === 0 ? cleanFileName : `${baseName}_${suffix}${extension}`;
+    const candidate = resolveInsideRoot(photoRoot, safeYear, safeMonth, nextName);
+
+    try {
+      await fs.access(candidate);
+      suffix++;
+    } catch {
+      return candidate;
+    }
+  }
+}
 
 export async function listPhotos(photoRoot: string, year: string, month: string): Promise<MediaItem[]> {
   const safeYear = assertYear(year);

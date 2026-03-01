@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Camera, ChevronRight, Menu, Settings, X } from "lucide-react";
+import { Camera, ChevronRight, Menu, Settings, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useGallery } from "./GalleryContext";
 
@@ -29,6 +29,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   } = useGallery();
 
   const onSettings = pathname === "/settings";
+  const onUpload = pathname === "/upload";
 
   return (
     <>
@@ -111,6 +112,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="sidebarFooter">
+        <Link
+          href="/upload"
+          className="settingsLink"
+          aria-current={onUpload ? "page" : undefined}
+          onClick={onNavigate}
+        >
+          <Upload className="settingsLinkIcon" />
+          Upload
+        </Link>
         <Link
           href="/settings"
           className="settingsLink"

@@ -44,6 +44,7 @@ type GalleryState = {
   setThroughYearsScope: (scope: ThroughYearsScope) => void;
   deletePhoto: (fileName: string) => Promise<void>;
   refreshConfig: () => Promise<void>;
+  refreshGallery: () => Promise<void>;
 };
 
 const GalleryContext = createContext<GalleryState | null>(null);
@@ -155,6 +156,33 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     await loadConfig();
   }, [loadConfig]);
 
+  const refreshGallery = useCallback(async () => {
+    if (!configured) {
+      return;
+    }
+
+    await loadYears();
+
+    if (selectedYear) {
+      await loadMonths(selectedYear);
+      if (selectedMonth) {
+        await loadPhotos(selectedYear, selectedMonth);
+        return;
+      }
+    }
+
+    await loadThisWeekPhotos(throughYearsScope);
+  }, [
+    configured,
+    loadMonths,
+    loadPhotos,
+    loadThisWeekPhotos,
+    loadYears,
+    selectedMonth,
+    selectedYear,
+    throughYearsScope,
+  ]);
+
   const deletePhoto = useCallback(
     async (fileName: string) => {
       if (!selectedYear || !selectedMonth) {
@@ -258,6 +286,7 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
         setThroughYearsScope,
         deletePhoto,
         refreshConfig,
+        refreshGallery,
       }}
     >
       {children}
