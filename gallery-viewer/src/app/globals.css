@@ -1,0 +1,181 @@
+:root {
+  --background: #f6f7fb;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --primary-soft: #dbeafe;
+  --border: #e5e7eb;
+  --success: #166534;
+  --success-soft: #dcfce7;
+  --error: #991b1b;
+  --error-soft: #fee2e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1220;
+    --card: #111827;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --primary: #60a5fa;
+    --primary-soft: #1e3a8a;
+    --border: #374151;
+    --success: #bbf7d0;
+    --success-soft: #14532d;
+    --error: #fecaca;
+    --error-soft: #7f1d1d;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+.appShell {
+  margin: 0 auto;
+  max-width: 1400px;
+  padding: 2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  padding: 1rem;
+}
+
+h1,
+h2 {
+  margin-bottom: 0.5rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.success,
+.error {
+  border-radius: 10px;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.error {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+.settingsForm {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.settingsForm input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  min-height: 44px;
+  padding: 0.65rem 0.8rem;
+}
+
+button {
+  background: var(--primary-soft);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+}
+
+button:hover {
+  border-color: var(--primary);
+}
+
+.galleryLayout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 220px 280px 1fr;
+}
+
+.listPanel ul {
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.listButton {
+  width: 100%;
+  text-align: left;
+}
+
+.listButton.active {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.photosPanel {
+  min-height: 520px;
+}
+
+.photoGrid {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.photoCard {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--card) 92%, #000 8%);
+}
+
+.photoCard img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.photoCard figcaption {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  padding: 0.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+  .galleryLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .photosPanel {
+    min-height: 360px;
+  }
+}

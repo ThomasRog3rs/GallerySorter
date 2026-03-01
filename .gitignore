@@ -84,3 +84,9 @@ Thumbs.db
 .env
 .env.local
 *.local
+
+# Gallery Viewer (Next.js)
+gallery-viewer/node_modules/
+gallery-viewer/.next/
+gallery-viewer/out/
+gallery-viewer/config.json

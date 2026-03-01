@@ -38,3 +38,7 @@ Examples:
 dotnet run --project GallerySorter/GallerySorter.csproj -- ./Photos --output ./Sorted --dry-run
 dotnet run --project GallerySorter/GallerySorter.csproj -- ./Photos --output ./Sorted --move --recursive
 ```
+
+## Gallery Viewer Web App
+
+A standalone Next.js app is available in `gallery-viewer/` for browsing the sorted directory with a local TypeScript backend and React frontend.
