@@ -55,21 +55,24 @@ const isHeicBuffer = (buffer: Buffer) => {
 
 function tryParseDateFromFileName(fileName: string): Date | null {
   const baseName = path.parse(fileName).name;
-  const patterns = [
-    /(?:^|[^0-9])(?<y>\d{4})(?<m>\d{2})(?<d>\d{2})(?=$|[^0-9])/,
-    /(?:^|[^0-9])(?<y>\d{4})[-_.](?<m>\d{2})[-_.](?<d>\d{2})(?=$|[^0-9])/,
-    /(?:^|[^0-9])(?<d>\d{2})[-_.](?<m>\d{2})[-_.](?<y>\d{4})(?=$|[^0-9])/,
+  const patterns: Array<{ regex: RegExp; order: readonly ["y", "m", "d"] | readonly ["d", "m", "y"] }> = [
+    { regex: /(?:^|[^0-9])(\d{4})(\d{2})(\d{2})(?=$|[^0-9])/, order: ["y", "m", "d"] },
+    { regex: /(?:^|[^0-9])(\d{4})[-_.](\d{2})[-_.](\d{2})(?=$|[^0-9])/, order: ["y", "m", "d"] },
+    { regex: /(?:^|[^0-9])(\d{2})[-_.](\d{2})[-_.](\d{4})(?=$|[^0-9])/, order: ["d", "m", "y"] },
   ];
 
-  for (const pattern of patterns) {
-    const match = pattern.exec(baseName);
-    if (!match?.groups) {
+  for (const { regex, order } of patterns) {
+    const match = regex.exec(baseName);
+    if (!match) {
       continue;
     }
 
-    const year = Number.parseInt(match.groups.y ?? "", 10);
-    const month = Number.parseInt(match.groups.m ?? "", 10);
-    const day = Number.parseInt(match.groups.d ?? "", 10);
+    const y = order.indexOf("y") + 1;
+    const m = order.indexOf("m") + 1;
+    const d = order.indexOf("d") + 1;
+    const year = Number.parseInt(match[y] ?? "", 10);
+    const month = Number.parseInt(match[m] ?? "", 10);
+    const day = Number.parseInt(match[d] ?? "", 10);
     if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
       continue;
     }
@@ -197,7 +200,7 @@ export async function POST(request: Request) {
           }
 
           const converted = await convert({
-            buffer: data,
+            buffer: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
             format: "PNG",
           });
 
