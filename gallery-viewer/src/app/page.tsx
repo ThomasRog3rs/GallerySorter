@@ -1,6 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type ConfigResponse = {
   photoRoot: string | null;
@@ -17,13 +25,14 @@ type MonthsResponse = {
   error?: string;
 };
 
-type Photo = {
+type MediaItem = {
   name: string;
   url: string;
+  type: "image" | "video";
 };
 
 type PhotosResponse = {
-  photos?: Photo[];
+  photos?: MediaItem[];
   error?: string;
 };
 
@@ -51,8 +60,13 @@ export default function Home() {
   const [months, setMonths] = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [photos, setPhotos] = useState<MediaItem[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const lightboxRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const isConfigured = Boolean(savedRoot);
 
@@ -137,6 +151,41 @@ export default function Home() {
     }
   }
 
+  const closeLightbox = useCallback(() => {
+    setLightboxOpen(false);
+  }, []);
+
+  function openLightbox(index: number) {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  }
+
+  const hasMedia = photos.length > 0;
+  const activeMedia = useMemo(() => {
+    if (!hasMedia) {
+      return null;
+    }
+
+    const safeIndex = ((lightboxIndex % photos.length) + photos.length) % photos.length;
+    return photos[safeIndex];
+  }, [hasMedia, lightboxIndex, photos]);
+
+  const showNext = useCallback(() => {
+    if (!hasMedia) {
+      return;
+    }
+
+    setLightboxIndex((prev) => (prev + 1) % photos.length);
+  }, [hasMedia, photos.length]);
+
+  const showPrevious = useCallback(() => {
+    if (!hasMedia) {
+      return;
+    }
+
+    setLightboxIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  }, [hasMedia, photos.length]);
+
   useEffect(() => {
     loadConfig().catch(() => setErrorMessage("Failed to read current configuration."));
   }, []);
@@ -164,6 +213,49 @@ export default function Home() {
 
     loadPhotos(selectedYear, selectedMonth).catch(() => setErrorMessage("Failed to load photos."));
   }, [isConfigured, selectedMonth, selectedYear]);
+
+  useEffect(() => {
+    if (!lightboxOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeLightbox();
+      } else if (event.key === "ArrowRight") {
+        showNext();
+      } else if (event.key === "ArrowLeft") {
+        showPrevious();
+      } else if (event.key === "Tab" && lightboxRef.current) {
+        const focusable = lightboxRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) {
+          return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+
+        if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      lastFocusedRef.current?.focus();
+    };
+  }, [closeLightbox, lightboxOpen, showNext, showPrevious]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -248,6 +340,7 @@ export default function Home() {
                         setSelectedYear(year);
                         setSelectedMonth(null);
                         setPhotos([]);
+                        setLightboxOpen(false);
                       }}
                       type="button"
                     >
@@ -271,6 +364,7 @@ export default function Home() {
                       onClick={() => {
                         setSelectedMonth(month);
                         setPhotos([]);
+                        setLightboxOpen(false);
                       }}
                       type="button"
                     >
@@ -290,10 +384,25 @@ export default function Home() {
               )}
 
               <div className="photoGrid">
-                {photos.map((photo) => (
+                {photos.map((photo, index) => (
                   <figure key={photo.url} className="photoCard">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.url} alt={photo.name} loading="lazy" />
+                    <button
+                      className="mediaCardButton"
+                      type="button"
+                      onClick={() => openLightbox(index)}
+                      aria-label={`Open ${photo.name}`}
+                    >
+                      {photo.type === "image" ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt={photo.name} loading="lazy" />
+                        </>
+                      ) : (
+                        <div className="videoThumb" aria-hidden="true">
+                          <span className="videoBadge">Video</span>
+                        </div>
+                      )}
+                    </button>
                     <figcaption>{photo.name}</figcaption>
                   </figure>
                 ))}
@@ -301,6 +410,66 @@ export default function Home() {
             </div>
           )}
         </section>
+      )}
+      {lightboxOpen && activeMedia && (
+        <div
+          ref={lightboxRef}
+          className="lightboxOverlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Viewer for ${activeMedia.name}`}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeLightbox();
+            }
+          }}
+          onKeyDown={(event: ReactKeyboardEvent<HTMLDivElement>) => {
+            if (event.key === "Escape") {
+              closeLightbox();
+            }
+          }}
+        >
+          <button
+            ref={closeButtonRef}
+            className="lightboxClose"
+            type="button"
+            onClick={closeLightbox}
+            aria-label="Close viewer"
+          >
+            ×
+          </button>
+          {photos.length > 1 && (
+            <>
+              <button
+                className="lightboxNav lightboxNavPrev"
+                type="button"
+                onClick={showPrevious}
+                aria-label="Previous item"
+              >
+                ‹
+              </button>
+              <button
+                className="lightboxNav lightboxNavNext"
+                type="button"
+                onClick={showNext}
+                aria-label="Next item"
+              >
+                ›
+              </button>
+            </>
+          )}
+          <div className="lightboxContent">
+            {activeMedia.type === "image" ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="lightboxImage" src={activeMedia.url} alt={activeMedia.name} />
+              </>
+            ) : (
+              <video key={activeMedia.url} className="lightboxVideo" src={activeMedia.url} controls autoPlay />
+            )}
+            <p className="lightboxCaption">{activeMedia.name}</p>
+          </div>
+        </div>
       )}
     </main>
   );

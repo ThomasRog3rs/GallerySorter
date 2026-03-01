@@ -1,5 +1,6 @@
-import { promises as fs } from "node:fs";
+import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
+import { Readable } from "node:stream";
 import convert from "heic-convert";
 import mime from "mime";
 import { NextResponse } from "next/server";
@@ -20,6 +21,49 @@ const BROWSER_SUPPORTED_EXTENSIONS = new Set([
   ".svg",
   ".webp",
 ]);
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv"]);
+
+function parseRange(rangeHeader: string, totalSize: number): { start: number; end: number } | null {
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
+  if (!match) {
+    return null;
+  }
+
+  const [, startValue, endValue] = match;
+  if (!startValue && !endValue) {
+    return null;
+  }
+
+  let start: number;
+  let end: number;
+
+  if (!startValue) {
+    const suffixLength = Number.parseInt(endValue, 10);
+    if (Number.isNaN(suffixLength) || suffixLength <= 0) {
+      return null;
+    }
+
+    start = Math.max(totalSize - suffixLength, 0);
+    end = totalSize - 1;
+  } else {
+    start = Number.parseInt(startValue, 10);
+    if (Number.isNaN(start) || start < 0 || start >= totalSize) {
+      return null;
+    }
+
+    if (endValue) {
+      end = Number.parseInt(endValue, 10);
+      if (Number.isNaN(end) || end < start) {
+        return null;
+      }
+      end = Math.min(end, totalSize - 1);
+    } else {
+      end = totalSize - 1;
+    }
+  }
+
+  return { start, end };
+}
 
 const isHeicBuffer = (buffer: Buffer) => {
   if (buffer.length < 12) {
@@ -53,8 +97,60 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const buffer = await fs.readFile(absolutePath);
     const extension = path.extname(file).toLowerCase();
+    const isVideo = VIDEO_EXTENSIONS.has(extension);
+
+    if (isVideo) {
+      const contentType = mime.getType(file) ?? "application/octet-stream";
+      const totalSize = stat.size;
+      const rangeHeader = request.headers.get("range");
+
+      if (!rangeHeader) {
+        const stream = Readable.toWeb(
+          createReadStream(absolutePath),
+        ) as unknown as ReadableStream<Uint8Array>;
+
+        return new NextResponse(stream, {
+          status: 200,
+          headers: {
+            "Content-Type": contentType,
+            "Content-Length": String(totalSize),
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "private, max-age=60",
+          },
+        });
+      }
+
+      const parsedRange = parseRange(rangeHeader, totalSize);
+      if (!parsedRange) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: {
+            "Content-Range": `bytes */${totalSize}`,
+            "Accept-Ranges": "bytes",
+          },
+        });
+      }
+
+      const { start, end } = parsedRange;
+      const chunkSize = end - start + 1;
+      const stream = Readable.toWeb(
+        createReadStream(absolutePath, { start, end }),
+      ) as unknown as ReadableStream<Uint8Array>;
+
+      return new NextResponse(stream, {
+        status: 206,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Length": String(chunkSize),
+          "Content-Range": `bytes ${start}-${end}/${totalSize}`,
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "private, max-age=60",
+        },
+      });
+    }
+
+    const buffer = await fs.readFile(absolutePath);
 
     const isBrowserSupported = BROWSER_SUPPORTED_EXTENSIONS.has(extension);
     const isHeic = HEIC_EXTENSIONS.has(extension) || isHeicBuffer(buffer);

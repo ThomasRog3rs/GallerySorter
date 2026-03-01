@@ -17,6 +17,15 @@ const IMAGE_EXTENSIONS = new Set([
   ".tiff",
 ]);
 
+const VIDEO_EXTENSIONS = new Set([
+  ".mp4",
+  ".webm",
+  ".mov",
+  ".m4v",
+  ".avi",
+  ".mkv",
+]);
+
 export function assertYear(input: string): string {
   if (!YEAR_RE.test(input)) {
     throw new Error("Invalid year.");
@@ -73,12 +82,13 @@ export async function listMonths(photoRoot: string, year: string): Promise<strin
   return listNumericDirectories(yearPath, MONTH_RE);
 }
 
-export type PhotoItem = {
+export type MediaItem = {
   name: string;
   url: string;
+  type: "image" | "video";
 };
 
-export async function listPhotos(photoRoot: string, year: string, month: string): Promise<PhotoItem[]> {
+export async function listPhotos(photoRoot: string, year: string, month: string): Promise<MediaItem[]> {
   const safeYear = assertYear(year);
   const safeMonth = assertMonth(month);
   const monthPath = resolveInsideRoot(photoRoot, safeYear, safeMonth);
@@ -95,11 +105,18 @@ export async function listPhotos(photoRoot: string, year: string, month: string)
       }
 
       const extension = path.extname(entry.name).toLowerCase();
-      return IMAGE_EXTENSIONS.has(extension);
+      return IMAGE_EXTENSIONS.has(extension) || VIDEO_EXTENSIONS.has(extension);
     })
-    .map((entry) => ({
-      name: entry.name,
-      url: `/api/photos/serve?year=${safeYear}&month=${safeMonth}&file=${encodeURIComponent(entry.name)}`,
-    }))
+    .map((entry) => {
+      const mediaType: MediaItem["type"] = VIDEO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())
+        ? "video"
+        : "image";
+
+      return {
+        name: entry.name,
+        url: `/api/photos/serve?year=${safeYear}&month=${safeMonth}&file=${encodeURIComponent(entry.name)}`,
+        type: mediaType,
+      };
+    })
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
