@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Gallery Viewer",
-  description: "Browse your sorted photos by year and month.",
+  title: "Tom's Life",
+  description: "Your personal photo gallery – browse memories by year and month.",
 };
 
 export default function RootLayout({
