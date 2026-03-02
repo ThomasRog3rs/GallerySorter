@@ -21,6 +21,23 @@ Scans a directory, reads metadata dates when available (EXIF first, then common 
 dotnet build GallerySorter.sln
 ```
 
+### Native HEIC/HEIF Support
+
+The CLI can convert HEIC/HEIF files to PNG. This requires the native `libheif` library to be installed on your system.
+
+On macOS:
+
+```bash
+brew install libheif
+```
+
+If `dotnet run` still reports `DllNotFoundException: libheif`, set the library path and re-run:
+
+```bash
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
+dotnet run --project GallerySorter/GallerySorter.csproj -- --source <path> [options]
+```
+
 ### Usage
 
 ```bash

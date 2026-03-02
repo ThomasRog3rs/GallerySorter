@@ -1,8 +1,10 @@
 using GallerySorter.Models;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Png;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using HeyRed.ImageSharp.Heif.Formats.Heif;
 
 namespace GallerySorter.Services;
 
@@ -22,6 +24,11 @@ public sealed class FileOrganizer(IMetadataDateReader metadataDateReader) : IFil
         ".heics",
         ".heifs",
         ".hif"
+    };
+
+    private static readonly DecoderOptions HeicDecoderOptions = new DecoderOptions
+    {
+        Configuration = new Configuration(new HeifConfigurationModule())
     };
 
     public Task<OrganizerResult> OrganizeAsync(OrganizerOptions options)
@@ -288,7 +295,7 @@ public sealed class FileOrganizer(IMetadataDateReader metadataDateReader) : IFil
 
     private static void ConvertToPng(string sourceFilePath, string destinationPath)
     {
-        using var image = Image.Load(sourceFilePath);
+        using var image = Image.Load(HeicDecoderOptions, sourceFilePath);
         image.Save(destinationPath, new PngEncoder());
     }
 }
