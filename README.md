@@ -2,6 +2,10 @@
 
 A .NET 8 CLI that organizes media files into `YYYY/MM` folders using metadata dates, plus a Next.js gallery app to browse, upload, and manage the sorted library.
 
+## Demo
+
+![Gallery Viewer Demo](Demo.png)
+
 ## Gallery Sorter CLI
 
 Scans a directory, reads metadata dates when available (EXIF first, then common date tags), and organizes files into year/month folders (e.g. `2024/03`).
