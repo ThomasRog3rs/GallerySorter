@@ -608,6 +608,10 @@ body {
   padding: 1.5rem;
 }
 
+.settingsCardWithBottomMargin {
+  margin-bottom: 1rem;
+}
+
 .settingsCardTitle {
   font-size: 0.9375rem;
   font-weight: 600;

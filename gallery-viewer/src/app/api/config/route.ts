@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { ensureDirectoryExists, readConfig, writeConfig } from "@/lib/config";
+import { DEFAULT_SITE_NAME, ensureDirectoryExists, readConfig, writeConfig } from "@/lib/config";
 
 export async function GET() {
   const config = await readConfig();
@@ -9,13 +9,22 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const body = (await request.json()) as { photoRoot?: unknown };
-    if (typeof body.photoRoot !== "string" || !body.photoRoot.trim()) {
-      return NextResponse.json({ error: "photoRoot is required." }, { status: 400 });
+    const body = (await request.json()) as { photoRoot?: unknown; siteName?: unknown };
+    if (body.photoRoot !== undefined && (typeof body.photoRoot !== "string" || !body.photoRoot.trim())) {
+      return NextResponse.json({ error: "photoRoot must be a non-empty string." }, { status: 400 });
+    }
+    if (body.siteName !== undefined && typeof body.siteName !== "string") {
+      return NextResponse.json({ error: "siteName must be a string." }, { status: 400 });
     }
 
-    const validatedPath = await ensureDirectoryExists(body.photoRoot);
-    const nextConfig = { photoRoot: validatedPath };
+    const currentConfig = await readConfig();
+    let validatedPath = currentConfig.photoRoot;
+    if (typeof body.photoRoot === "string") {
+      validatedPath = await ensureDirectoryExists(body.photoRoot);
+    }
+
+    const normalizedSiteName = body.siteName?.trim() || currentConfig.siteName || DEFAULT_SITE_NAME;
+    const nextConfig = { photoRoot: validatedPath, siteName: normalizedSiteName };
     await writeConfig(nextConfig);
 
     return NextResponse.json(nextConfig);

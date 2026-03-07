@@ -3,28 +3,42 @@ import path from "node:path";
 
 export type AppConfig = {
   photoRoot: string | null;
+  siteName: string;
 };
 
 const CONFIG_PATH = path.join(process.cwd(), "config.json");
+export const DEFAULT_SITE_NAME = "Image Vault";
 
 function normalizePath(input: string): string {
   return path.resolve(input.trim());
 }
 
+function normalizeSiteName(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 export async function readConfig(): Promise<AppConfig> {
   const envPath = process.env.PHOTO_ROOT?.trim();
-  if (envPath) {
-    return { photoRoot: normalizePath(envPath) };
-  }
+  const envSiteName = normalizeSiteName(process.env.SITE_NAME);
+  let photoRoot: string | null = envPath ? normalizePath(envPath) : null;
+  let siteName: string | null = envSiteName;
 
   try {
     const raw = await fs.readFile(CONFIG_PATH, "utf8");
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
-    const photoRoot = typeof parsed.photoRoot === "string" ? normalizePath(parsed.photoRoot) : null;
-    return { photoRoot };
+    if (!photoRoot && typeof parsed.photoRoot === "string") {
+      photoRoot = normalizePath(parsed.photoRoot);
+    }
+    if (!siteName) {
+      siteName = normalizeSiteName(parsed.siteName);
+    }
   } catch {
-    return { photoRoot: null };
+    // Ignore missing or invalid config file and fall back to defaults.
   }
+
+  return { photoRoot, siteName: siteName ?? DEFAULT_SITE_NAME };
 }
 
 export async function writeConfig(next: AppConfig): Promise<void> {

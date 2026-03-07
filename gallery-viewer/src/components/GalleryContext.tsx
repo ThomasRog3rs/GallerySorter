@@ -25,6 +25,7 @@ type ThroughYearsScope = "today" | "week";
 
 type GalleryState = {
   photoRoot: string | null;
+  siteName: string;
   configured: boolean;
   years: string[];
   months: string[];
@@ -59,6 +60,7 @@ export function useGallery(): GalleryState {
 
 export function GalleryProvider({ children }: { children: ReactNode }) {
   const [photoRoot, setPhotoRoot] = useState<string | null>(null);
+  const [siteName, setSiteName] = useState("Image Vault");
   const [years, setYears] = useState<string[]>([]);
   const [months, setMonths] = useState<string[]>([]);
   const [photos, setPhotos] = useState<MediaItem[]>([]);
@@ -81,8 +83,10 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/config", { cache: "no-store" });
       const data = await res.json();
       setPhotoRoot(data.photoRoot ?? null);
+      setSiteName(typeof data.siteName === "string" && data.siteName.trim() ? data.siteName.trim() : "Image Vault");
     } catch {
       setPhotoRoot(null);
+      setSiteName("Image Vault");
     } finally {
       setConfigLoaded(true);
     }
@@ -267,6 +271,7 @@ export function GalleryProvider({ children }: { children: ReactNode }) {
     <GalleryContext.Provider
       value={{
         photoRoot,
+        siteName,
         configured,
         years,
         months,

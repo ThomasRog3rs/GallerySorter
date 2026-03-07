@@ -18,6 +18,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const {
     configured,
+    siteName,
     years,
     months,
     selectedYear,
@@ -35,7 +36,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <>
       <Link href="/" className="sidebarHeader" onClick={onNavigate}>
         <Camera className="sidebarLogo" />
-        <span className="sidebarTitle">Tom&apos;s Life</span>
+        <span className="sidebarTitle">{siteName}</span>
       </Link>
 
       <nav className="sidebarNav" aria-label="Gallery navigation">
@@ -136,6 +137,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export default function Sidebar() {
+  const { siteName } = useGallery();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
@@ -167,7 +169,7 @@ export default function Sidebar() {
         </button>
         <Link href="/" className="mobileTitle">
           <Camera size={20} />
-          <span>Tom&apos;s Life</span>
+          <span>{siteName}</span>
         </Link>
       </header>
 

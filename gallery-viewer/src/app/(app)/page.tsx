@@ -36,6 +36,7 @@ function formatTakenDate(value: string): string {
 export default function GalleryPage() {
   const {
     configured,
+    siteName,
     photos,
     thisWeekPhotos,
     throughYearsScope,
@@ -157,7 +158,7 @@ export default function GalleryPage() {
     return (
       <div className="emptyState">
         <ImageIcon className="emptyStateIcon" />
-        <h2 className="emptyStateTitle">Welcome to Tom&apos;s Life</h2>
+        <h2 className="emptyStateTitle">Welcome to {siteName}</h2>
         <p className="emptyStateDescription">
           Set your photo directory to start browsing your memories.
         </p>
