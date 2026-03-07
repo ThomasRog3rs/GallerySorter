@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { readConfig } from "@/lib/config";
-import { listPhotos } from "@/lib/gallery";
+import { listDemoPhotos } from "@/lib/demo-gallery";
 
 type Params = {
   params: Promise<{ year: string; month: string }>;
@@ -10,12 +9,7 @@ type Params = {
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { year, month } = await params;
-    const { photoRoot } = await readConfig();
-    if (!photoRoot) {
-      return NextResponse.json({ photos: [], error: "Photo directory is not configured." }, { status: 400 });
-    }
-
-    const photos = await listPhotos(photoRoot, year, month);
+    const photos = listDemoPhotos(year, month);
     return NextResponse.json({ photos });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to read photos.";

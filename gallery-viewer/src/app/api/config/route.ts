@@ -4,7 +4,9 @@ import { ensureDirectoryExists, readConfig, writeConfig } from "@/lib/config";
 
 export async function GET() {
   const config = await readConfig();
-  return NextResponse.json(config);
+  return NextResponse.json({
+    photoRoot: config.photoRoot ?? "demo-mode",
+  });
 }
 
 export async function PUT(request: Request) {

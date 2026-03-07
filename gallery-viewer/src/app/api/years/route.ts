@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { readConfig } from "@/lib/config";
-import { listYears } from "@/lib/gallery";
+import { listDemoYears } from "@/lib/demo-gallery";
 
 export async function GET() {
   try {
-    const { photoRoot } = await readConfig();
-    if (!photoRoot) {
-      return NextResponse.json({ years: [], error: "Photo directory is not configured." }, { status: 400 });
-    }
-
-    const years = await listYears(photoRoot);
+    const years = listDemoYears();
     return NextResponse.json({ years });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to read years.";

@@ -157,7 +157,7 @@ export default function GalleryPage() {
     return (
       <div className="emptyState">
         <ImageIcon className="emptyStateIcon" />
-        <h2 className="emptyStateTitle">Welcome to Tom&apos;s Life</h2>
+        <h2 className="emptyStateTitle">Welcome to Image Vault</h2>
         <p className="emptyStateDescription">
           Set your photo directory to start browsing your memories.
         </p>

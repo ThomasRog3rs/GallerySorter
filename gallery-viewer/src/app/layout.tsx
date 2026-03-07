@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Tom's Life",
+  title: "Image Vault",
   description: "Your personal photo gallery – browse memories by year and month.",
 };
 
